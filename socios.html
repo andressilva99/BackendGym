@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Gestión de Socios</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-bottom: 20px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+    form {
+      margin-bottom: 30px;
+    }
+    input, select {
+      margin: 5px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Socios</h1>
+
+  <!-- TABLA -->
+  <table id="sociosTable">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Apellido</th>
+        <th>Nombre</th>
+        <th>Fecha Nac.</th>
+        <th>Entrenador</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <!-- CREAR -->
+  <h2>Crear Socio</h2>
+  <form id="createForm">
+    <input name="apellido" placeholder="Apellido" required />
+    <input name="nombre" placeholder="Nombre" required />
+    <input name="fechaNacimiento" type="date" required />
+
+    <select name="trainerId" required>
+      <option value="">Seleccionar entrenador...</option>
+    </select>
+
+    <button type="submit">Crear</button>
+  </form>
+
+  <!-- EDITAR -->
+  <h2>Editar Socio</h2>
+  <form id="editForm" style="display:none">
+    <input type="hidden" name="id" />
+
+    <input name="apellido" placeholder="Apellido" required />
+    <input name="nombre" placeholder="Nombre" required />
+    <input name="fechaNacimiento" type="date" required />
+
+    <select name="trainerId" required>
+      <option value="">Seleccionar entrenador...</option>
+    </select>
+
+    <button type="submit">Actualizar</button>
+    <button type="button" onclick="cancelEdit()">Cancelar</button>
+  </form>
+
+  <script>
+    const API_SOCIOS = "http://localhost:3000/socios";
+    const API_USERS  = "http://localhost:3000/users";
+
+    const tableBody  = document.querySelector("#sociosTable tbody");
+    const createForm = document.getElementById("createForm");
+    const editForm   = document.getElementById("editForm");
+
+    // Selects (entrenadores) en ambos forms
+    const createTrainerSelect = createForm.querySelector("select[name='trainerId']");
+    const editTrainerSelect   = editForm.querySelector("select[name='trainerId']");
+
+    // --- Helpers ---
+    function formatDateForInput(dateValue) {
+      // Convierte Date / string ISO a "YYYY-MM-DD" para <input type="date">
+      const d = new Date(dateValue);
+      if (isNaN(d.getTime())) return "";
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    function formatDateForTable(dateValue) {
+      const d = new Date(dateValue);
+      if (isNaN(d.getTime())) return "";
+      const dd = String(d.getDate()).padStart(2, "0");
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const yyyy = d.getFullYear();
+      return `${dd}/${mm}/${yyyy}`;
+    }
+
+    function getTrainerName(trainerIdField) {
+      // Si tu backend hace populate, trainerId puede venir como objeto { _id, username, ... }
+      if (trainerIdField && typeof trainerIdField === "object") {
+        return trainerIdField.username || trainerIdField._id || "—";
+      }
+      // Si viene solo ObjectId string
+      return trainerIdField || "—";
+    }
+
+    // --- Cargar entrenadores (users) en los selects ---
+    async function loadTrainers() {
+      const res = await fetch(API_USERS);
+      const users = await res.json();
+
+      // Limpiar selects y volver a poner placeholder
+      createTrainerSelect.innerHTML = `<option value="">Seleccionar entrenador...</option>`;
+      editTrainerSelect.innerHTML   = `<option value="">Seleccionar entrenador...</option>`;
+
+      users.forEach(u => {
+        // Si querés filtrar por rol (ej. solo entrenadores), acá podrías hacer:
+        // if (u.role !== 2) return;  // ejemplo
+        const opt1 = document.createElement("option");
+        opt1.value = u._id;
+        opt1.textContent = `${u.username} (DNI: ${u.dni})`;
+
+        const opt2 = opt1.cloneNode(true);
+
+        createTrainerSelect.appendChild(opt1);
+        editTrainerSelect.appendChild(opt2);
+      });
+    }
+
+    // --- Listar socios ---
+    async function loadSocios() {
+      const res = await fetch(API_SOCIOS);
+      const socios = await res.json();
+
+      tableBody.innerHTML = "";
+      socios.forEach(s => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${s._id}</td>
+          <td>${s.apellido}</td>
+          <td>${s.nombre}</td>
+          <td>${formatDateForTable(s.fechaNacimiento)}</td>
+          <td>${getTrainerName(s.trainerId)}</td>
+          <td>
+            <button onclick="editSocio('${s._id}')">Editar</button>
+            <button onclick="deleteSocio('${s._id}')">Eliminar</button>
+          </td>
+        `;
+        tableBody.appendChild(tr);
+      });
+    }
+
+    // --- Crear socio ---
+    createForm.addEventListener("submit", async e => {
+      e.preventDefault();
+
+      const data = {
+        apellido: createForm.apellido.value,
+        nombre: createForm.nombre.value,
+        fechaNacimiento: createForm.fechaNacimiento.value, // YYYY-MM-DD
+        trainerId: createTrainerSelect.value
+      };
+
+      await fetch(API_SOCIOS, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+
+      createForm.reset();
+      await loadSocios();
+    });
+
+    // --- Cargar socio en formulario edición ---
+    window.editSocio = async function (id) {
+      const res = await fetch(API_SOCIOS);
+      const socios = await res.json();
+      const socio = socios.find(s => s._id === id);
+      if (!socio) return alert("Socio no encontrado");
+
+      editForm.id.value = socio._id;
+      editForm.apellido.value = socio.apellido;
+      editForm.nombre.value = socio.nombre;
+      editForm.fechaNacimiento.value = formatDateForInput(socio.fechaNacimiento);
+
+      // Si viene populate, socio.trainerId es objeto; si no, es string
+      const trainerId = (socio.trainerId && typeof socio.trainerId === "object")
+        ? socio.trainerId._id
+        : socio.trainerId;
+
+      editTrainerSelect.value = trainerId || "";
+
+      editForm.style.display = "block";
+      window.scrollTo(0, document.body.scrollHeight);
+    };
+
+    // --- Actualizar socio ---
+    editForm.addEventListener("submit", async e => {
+      e.preventDefault();
+
+      const id = editForm.id.value;
+
+      const data = {
+        apellido: editForm.apellido.value,
+        nombre: editForm.nombre.value,
+        fechaNacimiento: editForm.fechaNacimiento.value,
+        trainerId: editTrainerSelect.value
+      };
+
+      await fetch(`${API_SOCIOS}/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+
+      editForm.reset();
+      editForm.style.display = "none";
+      await loadSocios();
+    });
+
+    window.cancelEdit = function () {
+      editForm.reset();
+      editForm.style.display = "none";
+    };
+
+    // --- Eliminar socio ---
+    window.deleteSocio = async function (id) {
+      if (!confirm("¿Eliminar socio?")) return;
+      await fetch(`${API_SOCIOS}/${id}`, { method: "DELETE" });
+      await loadSocios();
+    };
+
+    // Init
+    (async function init() {
+      await loadTrainers();
+      await loadSocios();
+    })();
+  </script>
+
+</body>
+</html>
