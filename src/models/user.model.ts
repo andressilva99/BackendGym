@@ -1,11 +1,15 @@
 import { Schema, model, Document } from "mongoose";
 import bcrypt from "bcrypt";
 
+export enum Role {
+  ADMIN = "ADMINISTRATIVO",
+  TRAINER = "ENTRENADOR",
+} 
 export interface User extends Document {
   username: string;
   dni: number;
   password: string;
-  role: number;
+  role: Role;
 }
 
 const userSchema = new Schema<User>(
@@ -28,9 +32,10 @@ const userSchema = new Schema<User>(
       minlength: 6
     },
     role: {
-      type: Number,
-      required: true
-    }
+  type: String,
+  enum: Object.values(Role),
+  required: true
+}
   },
   {
     timestamps: true

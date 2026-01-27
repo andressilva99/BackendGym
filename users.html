@@ -24,8 +24,9 @@
     form {
       margin-bottom: 30px;
     }
-    input {
+    input, select {
       margin: 5px;
+      padding: 5px;
     }
   </style>
 </head>
@@ -53,7 +54,13 @@
     <input name="username" placeholder="Usuario" required />
     <input name="dni" type="number" placeholder="DNI" required />
     <input name="password" type="password" placeholder="Password" required />
-    <input name="role" type="number" placeholder="Rol" required />
+
+    <select name="role" required>
+      <option value="">Seleccionar rol</option>
+      <option value="ADMINISTRATIVO">Administrativo</option>
+      <option value="ENTRENADOR">Entrenador</option>
+    </select>
+
     <button type="submit">Crear</button>
   </form>
 
@@ -64,9 +71,13 @@
 
     <input name="username" placeholder="Usuario" required />
     <input name="dni" type="number" placeholder="DNI" required />
-    <input name="role" type="number" placeholder="Rol" required />
 
-    <!-- 👇 PASSWORD OPCIONAL -->
+    <select name="role" required>
+      <option value="ADMINISTRATIVO">Administrativo</option>
+      <option value="ENTRENADOR">Entrenador</option>
+    </select>
+
+    <!-- PASSWORD OPCIONAL -->
     <input
       name="password"
       type="password"
@@ -113,7 +124,7 @@
         username: createForm.username.value,
         dni: Number(createForm.dni.value),
         password: createForm.password.value,
-        role: Number(createForm.role.value)
+        role: createForm.role.value
       };
 
       await fetch(API, {
@@ -152,10 +163,9 @@
       const data = {
         username: editForm.username.value,
         dni: Number(editForm.dni.value),
-        role: Number(editForm.role.value)
+        role: editForm.role.value
       };
 
-      // 👉 solo envía password si se escribió algo
       if (editForm.password.value.trim() !== "") {
         data.password = editForm.password.value;
       }
