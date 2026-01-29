@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pagos</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 15px; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+    th { background: #f2f2f2; }
+    input, select, button { margin: 5px; padding: 6px; }
+  </style>
+</head>
+<body>
+
+  <h1>Pagos</h1>
+
+  <h2>Generar tabla del mes</h2>
+  <form id="generateForm">
+    <input name="year" type="number" placeholder="Año" value="2026" required />
+    <input name="month" type="number" placeholder="Mes (1-12)" min="1" max="12" value="1" required />
+
+    <select name="shareId" required>
+      <option value="">Seleccionar cuota...</option>
+    </select>
+
+    <button type="submit">Generar pagos</button>
+  </form>
+
+  <h2>Tabla de pagos</h2>
+  <button id="refreshBtn">Actualizar</button>
+
+  <table id="paymentsTable">
+    <thead>
+      <tr>
+        <th>Socio</th>
+        <th>Cuota</th>
+        <th>Año</th>
+        <th>Mes</th>
+        <th>Pagado</th>
+        <th>Fecha pago</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    const API_PAYMENTS = "http://localhost:3000/payments";
+    const API_SHARES   = "http://localhost:3000/shares";
+
+    const generateForm = document.getElementById("generateForm");
+    const shareSelect  = generateForm.querySelector("select[name='shareId']");
+    const tableBody    = document.querySelector("#paymentsTable tbody");
+    const refreshBtn   = document.getElementById("refreshBtn");
+
+    function formatDate(dateValue) {
+      if (!dateValue) return "";
+      const d = new Date(dateValue);
+      if (isNaN(d.getTime())) return "";
+      const dd = String(d.getDate()).padStart(2, "0");
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const yyyy = d.getFullYear();
+      return `${dd}/${mm}/${yyyy}`;
+    }
+
+    async function loadShares() {
+      const res = await fetch(API_SHARES);
+      const shares = await res.json();
+
+      shareSelect.innerHTML = `<option value="">Seleccionar cuota...</option>`;
+
+      shares.forEach(s => {
+        const opt = document.createElement("option");
+        opt.value = s._id;
+        opt.textContent = `$${s.amount} - ${s.numberDays} días - ${formatDate(s.quoteDate)}`;
+        shareSelect.appendChild(opt);
+      });
+    }
+
+    async function loadPayments() {
+      const year = Number(generateForm.year.value);
+      const month = Number(generateForm.month.value);
+
+      const res = await fetch(`${API_PAYMENTS}?year=${year}&month=${month}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data?.message || "Error al listar pagos");
+        return;
+      }
+
+      tableBody.innerHTML = "";
+
+      data.forEach(p => {
+        const socio = p.socioId ? `${p.socioId.apellido}, ${p.socioId.nombre}` : "—";
+        const cuota = p.shareId ? `$${p.shareId.amount} (${p.shareId.numberDays} días)` : "—";
+
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+          <td>${socio}</td>
+          <td>${cuota}</td>
+          <td>${p.year}</td>
+          <td>${p.month}</td>
+          <td style="text-align:center;">
+            <input type="checkbox" ${p.isPaid ? "checked" : ""} data-id="${p._id}" />
+          </td>
+          <td>${formatDate(p.paymentDate)}</td>
+        `;
+
+        tableBody.appendChild(tr);
+      });
+
+      // listener para los checks
+      tableBody.querySelectorAll("input[type='checkbox']").forEach(chk => {
+        chk.addEventListener("change", async (e) => {
+          const id = e.target.dataset.id;
+          const r = await fetch(`${API_PAYMENTS}/${id}/toggle`, { method: "PATCH" });
+          const updated = await r.json();
+          if (!r.ok) {
+            alert(updated?.message || "Error al togglear pago");
+            return;
+          }
+          loadPayments();
+        });
+      });
+    }
+
+    generateForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const payload = {
+        year: Number(generateForm.year.value),
+        month: Number(generateForm.month.value),
+        shareId: shareSelect.value
+      };
+
+      const res = await fetch(`${API_PAYMENTS}/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data?.message || "Error generando pagos");
+        return;
+      }
+
+      alert(`OK: ${data.message}. Creados: ${data.createdCount}/${data.totalSocios}`);
+      loadPayments();
+    });
+
+    refreshBtn.addEventListener("click", loadPayments);
+
+    // init
+    (async function init() {
+      await loadShares();
+      await loadPayments();
+    })();
+  </script>
+
+</body>
+</html>

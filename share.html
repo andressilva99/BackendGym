@@ -1,143 +1,178 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <title>Gestión de Cuotas</title>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Gestión de Cuotas</title>
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-    }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      margin-bottom: 20px;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 8px;
-    }
-    th {
-      background-color: #f2f2f2;
-    }
-    form {
-      margin-bottom: 30px;
-    }
-    input {
-      margin: 5px;
-      padding: 5px;
-    }
-  </style>
-</head>
-<body>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        margin-bottom: 20px;
+      }
+      th,
+      td {
+        border: 1px solid #ccc;
+        padding: 8px;
+      }
+      th {
+        background-color: #f2f2f2;
+      }
+      form {
+        margin-bottom: 30px;
+      }
+      input {
+        margin: 5px;
+        padding: 5px;
+      }
 
-  <h1>Cuotas</h1>
+      /* ✅ Nuevo: prolijidad del form */
+      .form-row {
+        display: flex;
+        gap: 12px;
+        align-items: flex-end;
+        flex-wrap: wrap;
+        margin-top: 10px;
+      }
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .field label {
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Cuotas</h1>
 
-  <!-- TABLA -->
-  <table id="sharesTable">
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Días</th>
-        <th>Monto</th>
-        <th>Fecha de cuota</th>
-        <th>Acciones</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+    <!-- TABLA -->
+    <table id="sharesTable">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Días</th>
+          <th>Monto</th>
+          <th>Vigente desde</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
 
-  <!-- CREAR -->
-  <h2>Crear Cuota</h2>
-  <form id="createForm">
-    <input
-      name="numberDays"
-      type="number"
-      placeholder="Cantidad de días"
-      required
-    />
+    <!-- CREAR -->
+    <h2>Crear Cuota</h2>
+    <form id="createForm">
+      <div class="form-row">
+        <div class="field">
+          <label for="createNumberDays">Cantidad de días</label>
+          <input
+            id="createNumberDays"
+            name="numberDays"
+            type="number"
+            placeholder="Ej: 30"
+            required
+          />
+        </div>
 
-    <input
-      name="amount"
-      type="number"
-      placeholder="Monto"
-      required
-    />
+        <div class="field">
+          <label for="createAmount">Monto</label>
+          <input
+            id="createAmount"
+            name="amount"
+            type="number"
+            placeholder="Ej: 15000"
+            required
+          />
+        </div>
 
-    <input
-      name="quoteDate"
-      type="date"
-      required
-    />
+        <div class="field">
+          <label for="createQuoteDate">Vigente desde</label>
+          <input id="createQuoteDate" name="quoteDate" type="date" required />
+        </div>
 
-    <button type="submit">Crear</button>
-  </form>
+        <button type="submit">Crear</button>
+      </div>
+    </form>
 
-  <!-- EDITAR -->
-  <h2>Editar Cuota</h2>
-  <form id="editForm" style="display:none">
-    <input type="hidden" name="id" />
+    <!-- EDITAR -->
+    <h2>Editar Cuota</h2>
+    <form id="editForm" style="display: none">
+      <input type="hidden" name="id" />
 
-    <input
-      name="numberDays"
-      type="number"
-      placeholder="Cantidad de días"
-      required
-    />
+      <div class="form-row">
+        <div class="field">
+          <label for="editNumberDays">Cantidad de días</label>
+          <input
+            id="editNumberDays"
+            name="numberDays"
+            type="number"
+            placeholder="Ej: 30"
+            required
+          />
+        </div>
 
-    <input
-      name="amount"
-      type="number"
-      placeholder="Monto"
-      required
-    />
+        <div class="field">
+          <label for="editAmount">Monto</label>
+          <input
+            id="editAmount"
+            name="amount"
+            type="number"
+            placeholder="Ej: 15000"
+            required
+          />
+        </div>
 
-    <input
-      name="quoteDate"
-      type="date"
-      required
-    />
+        <div class="field">
+          <label for="editQuoteDate">Vigente desde</label>
+          <input id="editQuoteDate" name="quoteDate" type="date" required />
+        </div>
 
-    <button type="submit">Actualizar</button>
-    <button type="button" onclick="cancelEdit()">Cancelar</button>
-  </form>
+        <button type="submit">Actualizar</button>
+        <button type="button" onclick="cancelEdit()">Cancelar</button>
+      </div>
+    </form>
 
-  <script>
-    const API_SHARES = "http://localhost:3000/shares";
+    <script>
+      const API_SHARES = "http://localhost:3000/shares";
 
-    const tableBody  = document.querySelector("#sharesTable tbody");
-    const createForm = document.getElementById("createForm");
-    const editForm   = document.getElementById("editForm");
+      const tableBody = document.querySelector("#sharesTable tbody");
+      const createForm = document.getElementById("createForm");
+      const editForm = document.getElementById("editForm");
 
-    // Helpers para fechas
-    function formatDateForInput(dateValue) {
-      const d = new Date(dateValue);
-      if (isNaN(d.getTime())) return "";
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, "0");
-      const dd = String(d.getDate()).padStart(2, "0");
-      return `${yyyy}-${mm}-${dd}`;
-    }
+      // Helpers para fechas
+      function formatDateForInput(dateValue) {
+        const d = new Date(dateValue);
+        if (isNaN(d.getTime())) return "";
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+        return `${yyyy}-${mm}-${dd}`;
+      }
 
-    function formatDateForTable(dateValue) {
-      const d = new Date(dateValue);
-      if (isNaN(d.getTime())) return "";
-      const dd = String(d.getDate()).padStart(2, "0");
-      const mm = String(d.getMonth() + 1).padStart(2, "0");
-      const yyyy = d.getFullYear();
-      return `${dd}/${mm}/${yyyy}`;
-    }
+      function formatDateForTable(dateValue) {
+        const d = new Date(dateValue);
+        if (isNaN(d.getTime())) return "";
+        const dd = String(d.getDate()).padStart(2, "0");
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const yyyy = d.getFullYear();
+        return `${dd}/${mm}/${yyyy}`;
+      }
 
-    // LISTAR
-    async function loadShares() {
-      const res = await fetch(API_SHARES);
-      const shares = await res.json();
+      // LISTAR
+      async function loadShares() {
+        const res = await fetch(API_SHARES);
+        const shares = await res.json();
 
-      tableBody.innerHTML = "";
-      shares.forEach(s => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
+        tableBody.innerHTML = "";
+        shares.forEach((s) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
           <td>${s._id}</td>
           <td>${s.numberDays}</td>
           <td>$ ${s.amount}</td>
@@ -147,84 +182,83 @@
             <button onclick="deleteShare('${s._id}')">Eliminar</button>
           </td>
         `;
-        tableBody.appendChild(tr);
+          tableBody.appendChild(tr);
+        });
+      }
+
+      // CREAR
+      createForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const data = {
+          numberDays: Number(createForm.numberDays.value),
+          amount: Number(createForm.amount.value),
+          quoteDate: createForm.quoteDate.value,
+        };
+
+        await fetch(API_SHARES, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+
+        createForm.reset();
+        loadShares();
       });
-    }
 
-    // CREAR
-    createForm.addEventListener("submit", async e => {
-      e.preventDefault();
+      // CARGAR PARA EDICIÓN
+      window.editShare = async function (id) {
+        const res = await fetch(API_SHARES);
+        const shares = await res.json();
+        const share = shares.find((s) => s._id === id);
+        if (!share) return alert("Cuota no encontrada");
 
-      const data = {
-        numberDays: Number(createForm.numberDays.value),
-        amount: Number(createForm.amount.value),
-        quoteDate: createForm.quoteDate.value
+        editForm.id.value = share._id;
+        editForm.numberDays.value = share.numberDays;
+        editForm.amount.value = share.amount;
+        editForm.quoteDate.value = formatDateForInput(share.quoteDate);
+
+        editForm.style.display = "block";
+        window.scrollTo(0, document.body.scrollHeight);
       };
 
-      await fetch(API_SHARES, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
+      // ACTUALIZAR
+      editForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const id = editForm.id.value;
+
+        const data = {
+          numberDays: Number(editForm.numberDays.value),
+          amount: Number(editForm.amount.value),
+          quoteDate: editForm.quoteDate.value,
+        };
+
+        await fetch(`${API_SHARES}/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+
+        editForm.reset();
+        editForm.style.display = "none";
+        loadShares();
       });
 
-      createForm.reset();
-      loadShares();
-    });
-
-    // CARGAR PARA EDICIÓN
-    window.editShare = async function (id) {
-      const res = await fetch(API_SHARES);
-      const shares = await res.json();
-      const share = shares.find(s => s._id === id);
-      if (!share) return alert("Cuota no encontrada");
-
-      editForm.id.value = share._id;
-      editForm.numberDays.value = share.numberDays;
-      editForm.amount.value = share.amount;
-      editForm.quoteDate.value = formatDateForInput(share.quoteDate);
-
-      editForm.style.display = "block";
-      window.scrollTo(0, document.body.scrollHeight);
-    };
-
-    // ACTUALIZAR
-    editForm.addEventListener("submit", async e => {
-      e.preventDefault();
-
-      const id = editForm.id.value;
-
-      const data = {
-        numberDays: Number(editForm.numberDays.value),
-        amount: Number(editForm.amount.value),
-        quoteDate: editForm.quoteDate.value
+      window.cancelEdit = function () {
+        editForm.reset();
+        editForm.style.display = "none";
       };
 
-      await fetch(`${API_SHARES}/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      });
+      // ELIMINAR
+      window.deleteShare = async function (id) {
+        if (!confirm("¿Eliminar cuota?")) return;
+        await fetch(`${API_SHARES}/${id}`, { method: "DELETE" });
+        loadShares();
+      };
 
-      editForm.reset();
-      editForm.style.display = "none";
+      // INIT
       loadShares();
-    });
-
-    window.cancelEdit = function () {
-      editForm.reset();
-      editForm.style.display = "none";
-    };
-
-    // ELIMINAR
-    window.deleteShare = async function (id) {
-      if (!confirm("¿Eliminar cuota?")) return;
-      await fetch(`${API_SHARES}/${id}`, { method: "DELETE" });
-      loadShares();
-    };
-
-    // INIT
-    loadShares();
-  </script>
-
-</body>
+    </script>
+  </body>
 </html>
