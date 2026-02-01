@@ -5,103 +5,141 @@ import { ShareModel } from "../models/share.model";
 
 /**
  * GET /payments?year=2026&month=1
- * Lista pagos del mes/año
+ * Lista pagos con socio + entrenador + cuota
  */
 export const getPayments = async (req: Request, res: Response) => {
-  const year = Number(req.query.year);
-  const month = Number(req.query.month);
+  const { year, month } = req.query;
 
-  if (!year || !month) {
-    return res.status(400).json({ message: "Faltan parámetros year y month" });
-  }
+  const filter: any = {};
+  if (year) filter.year = Number(year);
+  if (month) filter.month = Number(month);
 
-  const payments = await PaymentModel.find({ year, month })
-    .populate("socioId", "apellido nombre")
-    .populate("shareId", "numberDays amount quoteDate")
-    .sort({ "socioId.apellido": 1 });
+  const payments = await PaymentModel.find(filter)
+    .populate({
+      path: "socioId",
+      select: "apellido nombre trainerId",
+      populate: {
+        path: "trainerId",
+        select: "username"
+      }
+    })
+    .populate("shareId", "amount numberDays quoteDate")
+    .sort({ year: -1, month: -1 });
 
   res.json(payments);
 };
 
 /**
- * POST /payments/generate
- * Body: { year, month, shareId }
- * Crea la "tabla" del mes: un pago por cada socio (si no existe)
+ * POST /payments
+ * Crear pago manual
  */
-export const generatePayments = async (req: Request, res: Response) => {
-  const { year, month, shareId } = req.body;
+export const createPayment = async (req: Request, res: Response) => {
+  const { socioId, shareId, year, month } = req.body;
 
-  if (!year || !month || !shareId) {
-    return res.status(400).json({ message: "Faltan datos: year, month, shareId" });
+  if (!socioId || !shareId || !year || !month) {
+    return res.status(400).json({ message: "Faltan datos" });
   }
 
-  // validar share
+  const socio = await SocioModel.findById(socioId);
+  if (!socio) {
+    return res.status(404).json({ message: "Socio no encontrado" });
+  }
+
   const share = await ShareModel.findById(shareId);
   if (!share) {
-    return res.status(404).json({ message: "Cuota (share) no encontrada" });
+    return res.status(404).json({ message: "Cuota no encontrada" });
   }
 
-  // traer socios
-  const socios = await SocioModel.find();
+  const exists = await PaymentModel.findOne({ socioId, year, month });
+  if (exists) {
+    return res.status(400).json({ message: "Pago duplicado" });
+  }
+
+  const payment = await PaymentModel.create({
+    socioId,
+    shareId,
+    year,
+    month,
+    isPaid: false,
+    paymentDate: null
+  });
+
+  const populated = await payment.populate([
+    {
+      path: "socioId",
+      select: "apellido nombre trainerId",
+      populate: { path: "trainerId", select: "username" }
+    },
+    {
+      path: "shareId",
+      select: "amount numberDays quoteDate"
+    }
+  ]);
+
+  res.status(201).json(populated);
+};
+
+/**
+ * POST /payments/generate
+ * Genera pagos automáticos (socios seleccionados o todos)
+ */
+export const generatePayments = async (req: Request, res: Response) => {
+  const { year, month, shareId, socioIds } = req.body;
+
+  if (!year || !month || !shareId) {
+    return res.status(400).json({ message: "Faltan datos" });
+  }
+
+  const socios = socioIds?.length
+    ? await SocioModel.find({ _id: { $in: socioIds } })
+    : await SocioModel.find();
+
   if (socios.length === 0) {
-    return res.status(400).json({ message: "No hay socios cargados" });
+    return res.status(400).json({ message: "No hay socios" });
   }
 
-  let createdCount = 0;
+  let created = 0;
 
   for (const socio of socios) {
-    try {
-      // upsert: si existe no crea; si no existe crea
-      const result = await PaymentModel.updateOne(
-        { socioId: socio._id, year, month },
-        {
-          $setOnInsert: {
-            socioId: socio._id,
-            shareId,
-            year,
-            month,
-            isPaid: false,
-            paymentDate: null
-          }
-        },
-        { upsert: true }
-      );
+    const exists = await PaymentModel.findOne({
+      socioId: socio._id,
+      year,
+      month
+    });
 
-      // Si insertó uno nuevo:
-      if (result.upsertedCount && result.upsertedCount > 0) createdCount++;
-    } catch (err: any) {
-      // Si da error por duplicado (index unique), lo ignoramos
-      if (err?.code !== 11000) {
-        return res.status(500).json({ message: "Error generando pagos", error: String(err) });
-      }
+    if (!exists) {
+      await PaymentModel.create({
+        socioId: socio._id,
+        shareId,
+        year,
+        month,
+        isPaid: false,
+        paymentDate: null
+      });
+      created++;
     }
   }
 
   res.json({
-    message: "Tabla de pagos generada",
-    createdCount,
+    message: "Pagos generados correctamente",
+    created,
     totalSocios: socios.length
   });
 };
 
 /**
  * PATCH /payments/:id/toggle
- * Cambia isPaid (true/false) y setea paymentDate
+ * Marca / desmarca pago y setea fecha
  */
 export const togglePayment = async (req: Request, res: Response) => {
-  const { id } = req.params;
-
-  const payment = await PaymentModel.findById(id);
+  const payment = await PaymentModel.findById(req.params.id);
   if (!payment) {
     return res.status(404).json({ message: "Pago no encontrado" });
   }
 
-  const newState = !payment.isPaid;
-
-  payment.isPaid = newState;
-  payment.paymentDate = newState ? new Date() : null;
+  payment.isPaid = !payment.isPaid;
+  payment.paymentDate = payment.isPaid ? new Date() : null;
 
   await payment.save();
-
   res.json(payment);
 };

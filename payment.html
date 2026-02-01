@@ -2,164 +2,292 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Pagos</title>
+  <title>Gestión de Pagos</title>
+
   <style>
-    body { font-family: Arial; padding: 20px; }
-    table { border-collapse: collapse; width: 100%; margin-top: 15px; }
-    th, td { border: 1px solid #ccc; padding: 8px; }
-    th { background: #f2f2f2; }
-    input, select, button { margin: 5px; padding: 6px; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      padding: 20px;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+    }
+
+    h2 {
+      margin-top: 0;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 6px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
+
+    .form-row {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      min-width: 180px;
+    }
+
+    label {
+      font-size: 14px;
+      margin-bottom: 4px;
+      color: #555;
+    }
+
+    input, select, button {
+      padding: 8px;
+      font-size: 14px;
+    }
+
+    button {
+      background: #1976d2;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #125ca1;
+    }
+
+    .socios-box {
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      max-height: 200px;
+      overflow-y: auto;
+      padding: 10px;
+      background: #fafafa;
+      margin-top: 10px;
+    }
+
+    .socios-box label {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 15px;
+      background: #fff;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    th {
+      background: #f0f0f0;
+    }
+
+    .actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
   </style>
 </head>
+
 <body>
 
-  <h1>Pagos</h1>
+<h1>💳 Gestión de Pagos</h1>
 
-  <h2>Generar tabla del mes</h2>
+<!-- CARD GENERAR PAGOS -->
+<div class="card">
+  <h2>Generar pagos</h2>
+
   <form id="generateForm">
-    <input name="year" type="number" placeholder="Año" value="2026" required />
-    <input name="month" type="number" placeholder="Mes (1-12)" min="1" max="12" value="1" required />
 
-    <select name="shareId" required>
-      <option value="">Seleccionar cuota...</option>
-    </select>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Año del pago</label>
+        <input name="year" type="number" value="2026" required />
+      </div>
 
+      <div class="form-group">
+        <label>Mes del pago</label>
+        <input name="month" type="number" min="1" max="12" value="1" required />
+      </div>
+
+      <div class="form-group" style="flex:1">
+        <label>Monto de la cuota</label>
+        <select name="shareId" required></select>
+      </div>
+    </div>
+
+    <h3>Socios</h3>
+
+    <label>
+      <input type="checkbox" id="selectAll"> Seleccionar todos
+    </label>
+
+    <div class="socios-box" id="sociosList"></div>
+
+    <br />
     <button type="submit">Generar pagos</button>
   </form>
+</div>
 
-  <h2>Tabla de pagos</h2>
-  <button id="refreshBtn">Actualizar</button>
+<!-- CARD TABLA -->
+<div class="card">
+  <div class="actions">
+    <h2>Tabla de pagos</h2>
+    <button id="refreshBtn">Actualizar</button>
+  </div>
 
   <table id="paymentsTable">
     <thead>
       <tr>
         <th>Socio</th>
+        <th>Entrenador</th>
         <th>Cuota</th>
         <th>Año</th>
         <th>Mes</th>
         <th>Pagado</th>
-        <th>Fecha pago</th>
+        <th>Fecha de pago</th>
       </tr>
     </thead>
     <tbody></tbody>
   </table>
+</div>
 
-  <script>
-    const API_PAYMENTS = "http://localhost:3000/payments";
-    const API_SHARES   = "http://localhost:3000/shares";
+<script>
+const API_PAYMENTS = "http://localhost:3000/payments";
+const API_SHARES   = "http://localhost:3000/shares";
+const API_SOCIOS   = "http://localhost:3000/socios";
 
-    const generateForm = document.getElementById("generateForm");
-    const shareSelect  = generateForm.querySelector("select[name='shareId']");
-    const tableBody    = document.querySelector("#paymentsTable tbody");
-    const refreshBtn   = document.getElementById("refreshBtn");
+const generateForm = document.getElementById("generateForm");
+const shareSelect  = generateForm.shareId;
+const sociosList   = document.getElementById("sociosList");
+const selectAll    = document.getElementById("selectAll");
+const tableBody    = document.querySelector("#paymentsTable tbody");
+const refreshBtn   = document.getElementById("refreshBtn");
 
-    function formatDate(dateValue) {
-      if (!dateValue) return "";
-      const d = new Date(dateValue);
-      if (isNaN(d.getTime())) return "";
-      const dd = String(d.getDate()).padStart(2, "0");
-      const mm = String(d.getMonth() + 1).padStart(2, "0");
-      const yyyy = d.getFullYear();
-      return `${dd}/${mm}/${yyyy}`;
-    }
+function formatDate(d) {
+  if (!d) return "";
+  return new Date(d).toLocaleDateString("es-AR");
+}
 
-    async function loadShares() {
-      const res = await fetch(API_SHARES);
-      const shares = await res.json();
+// CUOTAS
+async function loadShares() {
+  const res = await fetch(API_SHARES);
+  const shares = await res.json();
 
-      shareSelect.innerHTML = `<option value="">Seleccionar cuota...</option>`;
+  shareSelect.innerHTML = `<option value="">Seleccionar cuota...</option>`;
+  shares.forEach(s => {
+    shareSelect.innerHTML += `
+      <option value="${s._id}">
+        $${s.amount} - ${s.numberDays} días (${formatDate(s.quoteDate)})
+      </option>
+    `;
+  });
+}
 
-      shares.forEach(s => {
-        const opt = document.createElement("option");
-        opt.value = s._id;
-        opt.textContent = `$${s.amount} - ${s.numberDays} días - ${formatDate(s.quoteDate)}`;
-        shareSelect.appendChild(opt);
-      });
-    }
+// SOCIOS
+async function loadSocios() {
+  const res = await fetch(API_SOCIOS);
+  const socios = await res.json();
+  sociosList.innerHTML = "";
 
-    async function loadPayments() {
-      const year = Number(generateForm.year.value);
-      const month = Number(generateForm.month.value);
+  socios.forEach(s => {
+    sociosList.innerHTML += `
+      <label>
+        <input type="checkbox" value="${s._id}">
+        ${s.apellido}, ${s.nombre}
+      </label>
+    `;
+  });
+}
 
-      const res = await fetch(`${API_PAYMENTS}?year=${year}&month=${month}`);
-      const data = await res.json();
+selectAll.addEventListener("change", e => {
+  sociosList.querySelectorAll("input").forEach(i => i.checked = e.target.checked);
+});
 
-      if (!res.ok) {
-        alert(data?.message || "Error al listar pagos");
-        return;
-      }
+// PAGOS
+async function loadPayments() {
+  const res = await fetch(API_PAYMENTS);
+  const data = await res.json();
+  tableBody.innerHTML = "";
 
-      tableBody.innerHTML = "";
+  data.forEach(p => {
+    tableBody.innerHTML += `
+      <tr>
+        <td>${p.socioId.apellido}, ${p.socioId.nombre}</td>
+        <td>${p.socioId.trainerId?.username || "-"}</td>
+        <td>$${p.shareId.amount} (${p.shareId.numberDays} días)</td>
+        <td>${p.year}</td>
+        <td>${p.month}</td>
+        <td style="text-align:center">
+          <input type="checkbox" ${p.isPaid ? "checked" : ""} data-id="${p._id}">
+        </td>
+        <td>${formatDate(p.paymentDate)}</td>
+      </tr>
+    `;
+  });
 
-      data.forEach(p => {
-        const socio = p.socioId ? `${p.socioId.apellido}, ${p.socioId.nombre}` : "—";
-        const cuota = p.shareId ? `$${p.shareId.amount} (${p.shareId.numberDays} días)` : "—";
-
-        const tr = document.createElement("tr");
-
-        tr.innerHTML = `
-          <td>${socio}</td>
-          <td>${cuota}</td>
-          <td>${p.year}</td>
-          <td>${p.month}</td>
-          <td style="text-align:center;">
-            <input type="checkbox" ${p.isPaid ? "checked" : ""} data-id="${p._id}" />
-          </td>
-          <td>${formatDate(p.paymentDate)}</td>
-        `;
-
-        tableBody.appendChild(tr);
-      });
-
-      // listener para los checks
-      tableBody.querySelectorAll("input[type='checkbox']").forEach(chk => {
-        chk.addEventListener("change", async (e) => {
-          const id = e.target.dataset.id;
-          const r = await fetch(`${API_PAYMENTS}/${id}/toggle`, { method: "PATCH" });
-          const updated = await r.json();
-          if (!r.ok) {
-            alert(updated?.message || "Error al togglear pago");
-            return;
-          }
-          loadPayments();
-        });
-      });
-    }
-
-    generateForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-
-      const payload = {
-        year: Number(generateForm.year.value),
-        month: Number(generateForm.month.value),
-        shareId: shareSelect.value
-      };
-
-      const res = await fetch(`${API_PAYMENTS}/generate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        alert(data?.message || "Error generando pagos");
-        return;
-      }
-
-      alert(`OK: ${data.message}. Creados: ${data.createdCount}/${data.totalSocios}`);
+  document.querySelectorAll("input[data-id]").forEach(chk => {
+    chk.addEventListener("change", async e => {
+      await fetch(`${API_PAYMENTS}/${e.target.dataset.id}/toggle`, { method: "PATCH" });
       loadPayments();
     });
+  });
+}
 
-    refreshBtn.addEventListener("click", loadPayments);
+// GENERAR
+generateForm.addEventListener("submit", async e => {
+  e.preventDefault();
 
-    // init
-    (async function init() {
-      await loadShares();
-      await loadPayments();
-    })();
-  </script>
+  const socioIds = [...sociosList.querySelectorAll("input:checked")]
+    .map(i => i.value);
+
+  if (!socioIds.length) {
+    alert("Seleccioná al menos un socio");
+    return;
+  }
+
+  const payload = {
+    year: Number(generateForm.year.value),
+    month: Number(generateForm.month.value),
+    shareId: shareSelect.value,
+    socioIds
+  };
+
+  const res = await fetch(`${API_PAYMENTS}/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await res.json();
+  alert(data.message);
+  loadPayments();
+});
+
+refreshBtn.addEventListener("click", loadPayments);
+
+(async function init() {
+  await loadShares();
+  await loadSocios();
+  await loadPayments();
+})();
+</script>
 
 </body>
 </html>
