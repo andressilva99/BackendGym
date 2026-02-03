@@ -4,6 +4,7 @@ import userRoutes from "./routes/user.routes";
 import socioRoutes from "./routes/socio.routes";
 import shareRoutes from "./routes/share.routes";
 import paymentRoutes from "./routes/payment.routes";
+import reportRoutes from "./routes/report.routes";
 
 export const app = express();
 
@@ -14,3 +15,4 @@ app.use("/users", userRoutes);
 app.use("/socios", socioRoutes );
 app.use("/shares", shareRoutes);
 app.use("/payments", paymentRoutes);
+app.use("/reports", reportRoutes);

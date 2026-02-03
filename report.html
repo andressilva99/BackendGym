@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Resumen de Pagos</title>
+
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        margin-bottom: 20px;
+      }
+
+      th,
+      td {
+        border: 1px solid #ccc;
+        padding: 8px;
+        text-align: left;
+      }
+
+      th {
+        background-color: #f2f2f2;
+      }
+
+      input {
+        margin: 5px;
+        padding: 5px;
+      }
+
+      button {
+        padding: 6px 10px;
+        cursor: pointer;
+      }
+
+      .box {
+        border: 1px solid #ccc;
+        padding: 15px;
+        margin-bottom: 25px;
+        background: #fafafa;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>Resumen de Pagos</h1>
+
+    <!-- FILTROS -->
+    <div class="box">
+      <h2>Seleccionar período</h2>
+
+      <input id="year" type="number" placeholder="Año (ej: 2026)" />
+      <input id="month" type="number" placeholder="Mes (1-12)" />
+
+      <button onclick="loadReport()">Ver resumen</button>
+    </div>
+
+    <!-- RESUMEN GENERAL -->
+    <div class="box">
+      <h2>Resumen general</h2>
+
+      <table id="generalTable">
+        <thead>
+          <tr>
+            <th>Total socios</th>
+            <th>Total esperado</th>
+            <th>Total cobrado</th>
+            <th>Pagos realizados</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <!-- RESUMEN POR ENTRENADOR -->
+    <div class="box">
+      <h2>Resumen por entrenador</h2>
+
+      <table id="trainerTable">
+        <thead>
+          <tr>
+            <th>Entrenador</th>
+            <th>Socios</th>
+            <th>Total esperado</th>
+            <th>Total cobrado</th>
+            <th>Pagos realizados</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <script>
+      const API_REPORT = "http://localhost:3000/reports/summary";
+
+      const generalBody = document.querySelector("#generalTable tbody");
+      const trainerBody = document.querySelector("#trainerTable tbody");
+
+      async function loadReport() {
+        const year = document.getElementById("year").value;
+        const month = document.getElementById("month").value;
+
+        if (!year || !month) {
+          alert("Ingresá año y mes");
+          return;
+        }
+
+        const res = await fetch(`${API_REPORT}?year=${year}&month=${month}`);
+        const data = await res.json();
+
+        renderGeneral(data.general);
+        renderByTrainer(data.byTrainer);
+      }
+
+      function renderGeneral(general) {
+        generalBody.innerHTML = "";
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${general.totalSocios}</td>
+          <td>$ ${general.expectedTotal}</td>
+          <td>$ ${general.collectedTotal}</td>
+          <td>${general.paidCount}</td>
+        `;
+
+        generalBody.appendChild(tr);
+      }
+
+      function renderByTrainer(list) {
+        trainerBody.innerHTML = "";
+
+        list.forEach((t) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${t.trainerName}</td>
+            <td>${t.totalSocios}</td>
+            <td>$ ${t.expectedTotal}</td>
+            <td>$ ${t.collectedTotal}</td>
+            <td>${t.paidCount}</td>
+          `;
+          trainerBody.appendChild(tr);
+        });
+      }
+    </script>
+  </body>
+</html>
