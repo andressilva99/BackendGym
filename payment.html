@@ -11,9 +11,8 @@
       padding: 20px;
     }
 
-    h1, h2 {
-      margin-bottom: 10px;
-    }
+    h1 { margin-bottom: 10px; }
+    h2 { margin-top: 0; }
 
     .card {
       background: #fff;
@@ -55,8 +54,16 @@
       cursor: pointer;
     }
 
-    button:hover {
-      background: #125ca1;
+    button:hover { background: #125ca1; }
+
+    .socios-box {
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      max-height: 200px;
+      overflow-y: auto;
+      padding: 10px;
+      background: #fafafa;
+      margin-top: 10px;
     }
 
     table {
@@ -72,22 +79,11 @@
       font-size: 14px;
     }
 
-    th {
-      background: #f0f0f0;
-    }
-
-    .socios-box {
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      max-height: 200px;
-      overflow-y: auto;
-      padding: 10px;
-      background: #fafafa;
-    }
+    th { background: #f0f0f0; }
 
     .edit-btn {
-      margin-left: 5px;
       font-size: 12px;
+      margin-left: 6px;
       padding: 4px 6px;
     }
   </style>
@@ -105,12 +101,25 @@
     <div class="form-row">
       <div class="form-group">
         <label>Año</label>
-        <input type="number" name="year" value="2026" required />
+        <input name="year" type="number" value="2026" required />
       </div>
 
       <div class="form-group">
         <label>Mes</label>
-        <input type="number" name="month" min="1" max="12" value="1" required />
+        <select name="month" required>
+          <option value="1">Enero</option>
+          <option value="2">Febrero</option>
+          <option value="3">Marzo</option>
+          <option value="4">Abril</option>
+          <option value="5">Mayo</option>
+          <option value="6">Junio</option>
+          <option value="7">Julio</option>
+          <option value="8">Agosto</option>
+          <option value="9">Septiembre</option>
+          <option value="10">Octubre</option>
+          <option value="11">Noviembre</option>
+          <option value="12">Diciembre</option>
+        </select>
       </div>
 
       <div class="form-group" style="flex:1">
@@ -120,7 +129,7 @@
     </div>
 
     <label>
-      <input type="checkbox" id="selectAll"> Seleccionar todos los socios
+      <input type="checkbox" id="selectAll"> Seleccionar todos
     </label>
 
     <div class="socios-box" id="sociosList"></div>
@@ -163,34 +172,40 @@ const tableBody    = document.querySelector("#paymentsTable tbody");
 
 let SHARES_CACHE = [];
 
-// Utils
-function formatDate(date) {
-  return date ? new Date(date).toLocaleDateString("es-AR") : "";
+const MONTHS = [
+  "Enero","Febrero","Marzo","Abril","Mayo","Junio",
+  "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
+];
+
+function monthName(n) {
+  return MONTHS[n - 1] || "";
 }
 
-// Load shares
+function formatDate(d) {
+  return d ? new Date(d).toLocaleDateString("es-AR") : "";
+}
+
+// CUOTAS
 async function loadShares() {
   const res = await fetch(API_SHARES);
-  const shares = await res.json();
+  SHARES_CACHE = await res.json();
 
-  SHARES_CACHE = shares;
   shareSelect.innerHTML = `<option value="">Seleccionar cuota...</option>`;
-
-  shares.forEach(s => {
+  SHARES_CACHE.forEach(s => {
     shareSelect.innerHTML += `
       <option value="${s._id}">
-        $${s.amount} - ${s.numberDays} días
+        $${s.amount} - ${s.numberDays} días - ${s.quoteDate}
       </option>
     `;
   });
 }
 
-// Load socios
+// SOCIOS
 async function loadSocios() {
   const res = await fetch(API_SOCIOS);
   const socios = await res.json();
-  sociosList.innerHTML = "";
 
+  sociosList.innerHTML = "";
   socios.forEach(s => {
     sociosList.innerHTML += `
       <label>
@@ -205,7 +220,7 @@ selectAll.addEventListener("change", e => {
   sociosList.querySelectorAll("input").forEach(i => i.checked = e.target.checked);
 });
 
-// Load payments
+// PAGOS
 async function loadPayments() {
   const res = await fetch(API_PAYMENTS);
   const payments = await res.json();
@@ -222,15 +237,15 @@ async function loadPayments() {
           $${p.shareId.amount} (${p.shareId.numberDays} días)
           ${!p.isPaid ? `
             <button class="edit-btn"
-              onclick="editShare('${p._id}', '${p.shareId._id}')">✏️</button>
+              onclick="editShare('${p._id}','${p.shareId._id}')">✏️</button>
           ` : ""}
         </td>
 
         <td>${p.year}</td>
-        <td>${p.month}</td>
+        <td>${monthName(p.month)}</td>
 
         <td style="text-align:center">
-          <input type="checkbox" ${p.isPaid ? "checked" : ""} 
+          <input type="checkbox" ${p.isPaid ? "checked" : ""}
             onchange="togglePayment('${p._id}')">
         </td>
 
@@ -240,13 +255,13 @@ async function loadPayments() {
   });
 }
 
-// Toggle pago
+// TOGGLE PAGO
 async function togglePayment(id) {
   await fetch(`${API_PAYMENTS}/${id}/toggle`, { method: "PATCH" });
   loadPayments();
 }
 
-// Edit cuota
+// EDITAR CUOTA
 function editShare(paymentId, currentShareId) {
   const cell = document.getElementById(`share-${paymentId}`);
 
@@ -262,7 +277,7 @@ function editShare(paymentId, currentShareId) {
   `;
 }
 
-// Save cuota
+// GUARDAR CUOTA
 async function saveShare(paymentId) {
   const select = document.getElementById(`share-select-${paymentId}`);
 
@@ -275,7 +290,7 @@ async function saveShare(paymentId) {
   loadPayments();
 }
 
-// Generate payments
+// GENERAR
 generateForm.addEventListener("submit", async e => {
   e.preventDefault();
 
@@ -289,18 +304,16 @@ generateForm.addEventListener("submit", async e => {
     socioIds
   };
 
-  const res = await fetch(`${API_PAYMENTS}/generate`, {
+  await fetch(`${API_PAYMENTS}/generate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   });
 
-  const data = await res.json();
-  alert(data.message);
   loadPayments();
 });
 
-// Init
+// INIT
 (async function init() {
   await loadShares();
   await loadSocios();
