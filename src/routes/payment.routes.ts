@@ -3,7 +3,8 @@ import {
   getPayments,
   createPayment,
   generatePayments,
-  togglePayment
+  togglePayment,
+  updatePayment
 } from "../controllers/payment.controller";
 
 const router = Router();
@@ -11,6 +12,7 @@ const router = Router();
 router.get("/", getPayments);
 router.post("/", createPayment);
 router.post("/generate", generatePayments);
+router.patch("/:id", updatePayment);
 router.patch("/:id/toggle", togglePayment);
 
 export default router;

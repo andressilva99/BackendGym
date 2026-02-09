@@ -3,10 +3,7 @@ import { PaymentModel } from "../models/payment.model";
 import { SocioModel } from "../models/socio.model";
 import { ShareModel } from "../models/share.model";
 
-/**
- * GET /payments?year=2026&month=1
- * Lista pagos con socio + entrenador + cuota
- */
+// GET /payments
 export const getPayments = async (req: Request, res: Response) => {
   const { year, month } = req.query;
 
@@ -29,10 +26,7 @@ export const getPayments = async (req: Request, res: Response) => {
   res.json(payments);
 };
 
-/**
- * POST /payments
- * Crear pago manual
- */
+// POST /payments
 export const createPayment = async (req: Request, res: Response) => {
   const { socioId, shareId, year, month } = req.body;
 
@@ -64,25 +58,10 @@ export const createPayment = async (req: Request, res: Response) => {
     paymentDate: null
   });
 
-  const populated = await payment.populate([
-    {
-      path: "socioId",
-      select: "apellido nombre trainerId",
-      populate: { path: "trainerId", select: "username" }
-    },
-    {
-      path: "shareId",
-      select: "amount numberDays quoteDate"
-    }
-  ]);
-
-  res.status(201).json(populated);
+  res.status(201).json(payment);
 };
 
-/**
- * POST /payments/generate
- * Genera pagos automáticos (socios seleccionados o todos)
- */
+// POST /payments/generate
 export const generatePayments = async (req: Request, res: Response) => {
   const { year, month, shareId, socioIds } = req.body;
 
@@ -93,10 +72,6 @@ export const generatePayments = async (req: Request, res: Response) => {
   const socios = socioIds?.length
     ? await SocioModel.find({ _id: { $in: socioIds } })
     : await SocioModel.find();
-
-  if (socios.length === 0) {
-    return res.status(400).json({ message: "No hay socios" });
-  }
 
   let created = 0;
 
@@ -112,25 +87,16 @@ export const generatePayments = async (req: Request, res: Response) => {
         socioId: socio._id,
         shareId,
         year,
-        month,
-        isPaid: false,
-        paymentDate: null
+        month
       });
       created++;
     }
   }
 
-  res.json({
-    message: "Pagos generados correctamente",
-    created,
-    totalSocios: socios.length
-  });
+  res.json({ message: "Pagos generados", created });
 };
 
-/**
- * PATCH /payments/:id/toggle
- * Marca / desmarca pago y setea fecha
- */
+// PATCH /payments/:id/toggle
 export const togglePayment = async (req: Request, res: Response) => {
   const payment = await PaymentModel.findById(req.params.id);
   if (!payment) {
@@ -139,6 +105,34 @@ export const togglePayment = async (req: Request, res: Response) => {
 
   payment.isPaid = !payment.isPaid;
   payment.paymentDate = payment.isPaid ? new Date() : null;
+
+  await payment.save();
+  res.json(payment);
+};
+
+// 🔥 PATCH /payments/:id (EDITAR CUOTA)
+export const updatePayment = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { shareId } = req.body;
+
+  const payment = await PaymentModel.findById(id);
+  if (!payment) {
+    return res.status(404).json({ message: "Pago no encontrado" });
+  }
+
+  if (payment.isPaid) {
+    return res
+      .status(400)
+      .json({ message: "No se puede editar un pago abonado" });
+  }
+
+  if (shareId) {
+    const share = await ShareModel.findById(shareId);
+    if (!share) {
+      return res.status(404).json({ message: "Cuota no encontrada" });
+    }
+    payment.shareId = shareId;
+  }
 
   await payment.save();
   res.json(payment);
