@@ -3,7 +3,7 @@ import { Schema, model, Document, Types } from "mongoose";
 export interface Socio extends Document {
   apellido: string;
   nombre: string;
-  fechaNacimiento: Date;
+  fechaNacimiento: String;
   trainerId: Types.ObjectId; // usuario (entrenador) que lo creó
 }
 
@@ -20,7 +20,7 @@ const socioSchema = new Schema<Socio>(
       trim: true
     },
     fechaNacimiento: {
-      type: Date,
+      type: String,
       required: true
     },
     trainerId: {
