@@ -11,12 +11,12 @@ const shareSchema = new Schema<Share>(
     numberDays: {
       type: Number,
       required: true,
-      trim: true
+      //trim: true
     },
     amount: {
       type: Number,
       required: true,
-      trim: true
+      //trim: true
     },
     quoteDate: {
       type: Date,

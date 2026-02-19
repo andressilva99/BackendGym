@@ -11,8 +11,10 @@ export const getShares = async (_req: Request, res: Response) => {
 export const createShare = async (req: Request, res: Response) => {
   const { numberDays, amount, quoteDate } = req.body;
 
-  if (!numberDays || !amount || !quoteDate) {
-    return res.status(400).json({ message: "Faltan datos" });
+  // 🔹 CORRECCIÓN: Verificamos que no sean undefined o null. 
+  // Antes, if(!amount) fallaba si amount era 0.
+  if (numberDays === undefined || amount === undefined || !quoteDate) {
+    return res.status(400).json({ message: "Faltan datos obligatorios" });
   }
 
   const share = new ShareModel({
@@ -24,7 +26,6 @@ export const createShare = async (req: Request, res: Response) => {
   await share.save();
   res.status(201).json(share);
 };
-
 /* ===== PUT /shares/:id ===== */
 export const updateShare = async (req: Request, res: Response) => {
   const share = await ShareModel.findByIdAndUpdate(

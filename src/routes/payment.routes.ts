@@ -4,7 +4,8 @@ import {
   createPayment,
   generatePayments,
   togglePayment,
-  updatePayment
+  updatePayment,
+  deletePayment
 } from "../controllers/payment.controller";
 
 const router = Router();
@@ -14,5 +15,6 @@ router.post("/", createPayment);
 router.post("/generate", generatePayments);
 router.patch("/:id", updatePayment);
 router.patch("/:id/toggle", togglePayment);
+router.delete("/:id", deletePayment);
 
 export default router;

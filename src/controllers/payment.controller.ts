@@ -137,3 +137,15 @@ export const updatePayment = async (req: Request, res: Response) => {
   await payment.save();
   res.json(payment);
 };
+
+// DELETE /payments/:id
+export const deletePayment = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const payment = await PaymentModel.findByIdAndDelete(id);
+
+  if (!payment) {
+    return res.status(404).json({ message: "Pago no encontrado" });
+  }
+
+  res.json({ message: "Pago eliminado correctamente" });
+};
