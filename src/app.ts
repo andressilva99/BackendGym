@@ -12,7 +12,7 @@ app.use(express.json());
 
 app.use(cors({
   origin: [
-    "https://gymsilcortech.vercel.app/", 
+    "https://gymsilcortech.vercel.app", 
     "http://localhost:5173"
   ],
   // Agregamos PATCH y OPTIONS a la lista de métodos permitidos
