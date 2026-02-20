@@ -8,22 +8,19 @@ import reportRoutes from "./routes/report.routes";
 
 export const app = express();
 
-// 1. CORS DEBE SER LO PRIMERO
+app.use(express.json());
+
 app.use(cors({
   origin: [
     "https://gymsilcortech.vercel.app", 
     "http://localhost:5173"
   ],
+   // Agregamos PATCH y OPTIONS a la lista de métodos permitidos
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   credentials: true,
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-  optionsSuccessStatus: 200 // Responde 200 OK a las peticiones OPTIONS
+  allowedHeaders: ["Content-Type", "Authorization"] // Asegura que los headers comunes estén permitidos
 }));
 
-// 2. LUEGO EL PARSER DE JSON
-app.use(express.json());
-
-// 3. POR ÚLTIMO LAS RUTAS
 app.use("/users", userRoutes);
 app.use("/socios", socioRoutes);
 app.use("/shares", shareRoutes);
