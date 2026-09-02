@@ -21,6 +21,10 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"] // Asegura que los headers comunes estén permitidos
 }));
 
+app.get("/", (_req, res) => {
+  res.status(200).send("OK");
+});
+
 app.use("/users", userRoutes);
 app.use("/socios", socioRoutes);
 app.use("/shares", shareRoutes);
