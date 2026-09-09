@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { Types } from "mongoose";
 import { UserModel, Role } from "../models/user.model";
 import bcrypt from "bcrypt";
 
@@ -20,26 +21,43 @@ export const createUser = async (req: Request, res: Response) => {
     return res.status(400).json({ message: "Rol inválido" });
   }
 
-  const userExists = await UserModel.findOne({
-    $or: [{ username }, { dni }],
-  });
+  const [dniExists, usernameExists] = await Promise.all([
+    UserModel.findOne({ dni }),
+    UserModel.findOne({ username }),
+  ]);
 
-  if (userExists) {
-    return res.status(400).json({ message: "Usuario ya existe" });
+  if (dniExists) {
+    return res.status(400).json({ message: "Ya existe un usuario con ese DNI" });
   }
 
-  const user = new UserModel({ username, dni, password, role });
-  await user.save();
+  if (usernameExists) {
+    return res.status(400).json({ message: "Ya existe un usuario con ese nombre de usuario" });
+  }
 
-  res.status(201).json({
-    message: "Usuario creado",
-    user: {
-      id: user._id,
-      username: user.username,
-      dni: user.dni,
-      role: user.role,
-    },
-  });
+  try {
+    const user = new UserModel({ username, dni, password, role });
+    await user.save();
+
+    res.status(201).json({
+      message: "Usuario creado",
+      user: {
+        id: user._id,
+        username: user.username,
+        dni: user.dni,
+        role: user.role,
+      },
+    });
+  } catch (error: any) {
+    if (error?.code === 11000) {
+      const field = Object.keys(error.keyPattern ?? {})[0];
+      const message =
+        field === "dni"
+          ? "Ya existe un usuario con ese DNI"
+          : "Ya existe un usuario con ese nombre de usuario";
+      return res.status(400).json({ message });
+    }
+    throw error;
+  }
 };
 
 /* ===== PUT /users/:id ===== */
@@ -52,8 +70,24 @@ export const updateUser = async (req: Request, res: Response) => {
     return res.status(404).json({ message: "Usuario no encontrado" });
   }
 
-  if (username) user.username = username;
-  if (dni) user.dni = dni;
+  const otherUsers = { $ne: new Types.ObjectId(String(id)) };
+
+  if (dni && dni !== user.dni) {
+    const dniExists = await UserModel.findOne({ dni, _id: otherUsers });
+    if (dniExists) {
+      return res.status(400).json({ message: "Ya existe un usuario con ese DNI" });
+    }
+    user.dni = dni;
+  }
+
+  if (username && username !== user.username) {
+    const usernameExists = await UserModel.findOne({ username, _id: otherUsers });
+    if (usernameExists) {
+      return res.status(400).json({ message: "Ya existe un usuario con ese nombre de usuario" });
+    }
+    user.username = username;
+  }
+
   if (password) user.password = password;
 
   if (role) {
@@ -63,7 +97,19 @@ export const updateUser = async (req: Request, res: Response) => {
     user.role = role;
   }
 
-  await user.save();
+  try {
+    await user.save();
+  } catch (error: any) {
+    if (error?.code === 11000) {
+      const field = Object.keys(error.keyPattern ?? {})[0];
+      const message =
+        field === "dni"
+          ? "Ya existe un usuario con ese DNI"
+          : "Ya existe un usuario con ese nombre de usuario";
+      return res.status(400).json({ message });
+    }
+    throw error;
+  }
 
   res.json({
     message: "Usuario actualizado",
