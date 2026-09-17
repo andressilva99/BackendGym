@@ -5,6 +5,10 @@ import socioRoutes from "./routes/socio.routes";
 import shareRoutes from "./routes/share.routes";
 import paymentRoutes from "./routes/payment.routes";
 import reportRoutes from "./routes/report.routes";
+import courtRoutes from "./routes/court.routes";
+import priceRoutes from "./routes/price.routes";
+import timesLotRoutes from "./routes/timesLot.routes";
+import bookingRoutes from "./routes/booking.routes";
 
 export const app = express();
 
@@ -30,3 +34,7 @@ app.use("/socios", socioRoutes);
 app.use("/shares", shareRoutes);
 app.use("/payments", paymentRoutes);
 app.use("/reports", reportRoutes);
+app.use("/courts", courtRoutes);
+app.use("/prices", priceRoutes);
+app.use("/timeslots", timesLotRoutes);
+app.use("/bookings", bookingRoutes);

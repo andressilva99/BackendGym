@@ -16,13 +16,15 @@
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
-    "mongoose": "^9.1.5"
+    "mongoose": "^9.1.5",
+    "nodemailer": "^10.0.10"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^25.0.10",
+    "@types/nodemailer": "^8.0.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.9.3"
   }
