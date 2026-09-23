@@ -61,23 +61,23 @@ export const createBooking = async (req: Request, res: Response) => {
   timeslot.status = State.BOOKED;
   await timeslot.save();
 
-  try {
-    await sendBookingEmails({
-      firstName,
-      lastName,
-      email,
-      whatsapp,
-      courtName: court.name,
-      date: timeslot.date,
-      startTime: timeslot.startTime,
-      endTime: timeslot.endTime,
-      paidAmount: price.amount
-    });
-  } catch (error) {
-    console.error("❌ Error enviando emails de confirmación de turno:", error);
-  }
-
+  // Respondemos apenas la reserva queda guardada; los emails se envían en segundo plano
+  // para que el cliente no espere al servidor de correo.
   res.status(201).json(booking);
+
+  sendBookingEmails({
+    firstName,
+    lastName,
+    email,
+    whatsapp,
+    courtName: court.name,
+    date: timeslot.date,
+    startTime: timeslot.startTime,
+    endTime: timeslot.endTime,
+    paidAmount: price.amount
+  }).catch((error) => {
+    console.error("❌ Error enviando emails de confirmación de turno:", error);
+  });
 };
 
 /* ===== GET /bookings/unseen ===== */
