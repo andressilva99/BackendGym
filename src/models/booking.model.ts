@@ -27,15 +27,18 @@ const bookingSchema = new Schema<Booking>(
       required: true
     }, 
      // Customer data
+     // Nombre y apellido se guardan siempre en mayúscula, sin importar cómo se escribieron
      firstName: {
       type: String,
       required: true,
-      trim: true
+      trim: true,
+      uppercase: true
     },
     lastName: {
       type: String,
       required: true,
-      trim: true
+      trim: true,
+      uppercase: true
     },
     dni: {
       type: Number,

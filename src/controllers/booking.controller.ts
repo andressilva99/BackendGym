@@ -95,15 +95,18 @@ export const createBooking = async (req: Request, res: Response) => {
   res.status(201).json(booking);
 
   sendBookingEmails({
-    firstName,
-    lastName,
+    // Los guardados (ya en mayúscula por el modelo), no los que llegaron del formulario
+    firstName: booking.firstName,
+    lastName: booking.lastName,
     email,
     whatsapp,
     courtName: court.name,
     date: timeslot.date,
     startTime: timeslot.startTime,
     endTime: timeslot.endTime,
-    paidAmount: price.amount
+    paidAmount: price.amount,
+    dni: booking.dni,
+    bookingDate: booking.bookingDate
   }).catch((error) => {
     console.error("❌ Error enviando emails de confirmación de turno:", error);
   });

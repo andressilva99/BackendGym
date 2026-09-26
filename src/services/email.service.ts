@@ -39,6 +39,8 @@ interface BookingEmailData {
   startTime: string;
   endTime: string;
   paidAmount: number;
+  dni?: number;
+  bookingDate?: Date; // cuándo se hizo la reserva
 }
 
 // La fecha del turno se guarda como medianoche UTC del día ("2026-09-25T00:00:00Z"): formatear
@@ -188,19 +190,64 @@ const customerHtml = (data: BookingEmailData, formattedDate: string) => {
   </div>`;
 };
 
-const adminHtml = (data: BookingEmailData, formattedDate: string) => `
-  <div style="font-family:Arial,Helvetica,sans-serif">
-    <h2 style="color:#023e8a">Nuevo turno reservado</h2>
-    <table role="presentation" style="border-collapse:collapse">
-      ${row("Cliente", escapeHtml(`${data.firstName} ${data.lastName}`))}
-      ${row("Email", escapeHtml(data.email))}
-      ${row("WhatsApp", escapeHtml(data.whatsapp))}
-      ${row("Cancha", escapeHtml(data.courtName))}
-      ${row("Fecha", escapeHtml(formattedDate))}
-      ${row("Horario", `${escapeHtml(data.startTime)} a ${escapeHtml(data.endTime)}`)}
-      ${row("Monto a abonar", formatMoney(data.paidAmount))}
-    </table>
+// El cliente carga su WhatsApp sin 0 ni 15 (ej: 3564607128): le agregamos el 549 de Argentina
+const clientWhatsappDigits = (whatsapp: number | string) => {
+  const digits = String(whatsapp ?? "").replace(/\D/g, "");
+  return digits.startsWith("54") ? digits : `549${digits}`;
+};
+
+const formatBookingMoment = (date?: Date) =>
+  new Date(date ?? Date.now()).toLocaleString("es-AR", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    dateStyle: "short",
+    timeStyle: "short"
+  });
+
+const adminHtml = (data: BookingEmailData, formattedDate: string) => {
+  const name = `${data.firstName} ${data.lastName}`;
+  const turno = `${formattedDate} de ${data.startTime} a ${data.endTime} en ${data.courtName}`;
+  const clientPhone = clientWhatsappDigits(data.whatsapp);
+  const chatLink = whatsappLink(
+    clientPhone,
+    `Hola ${data.firstName}! Te escribimos de Oxígeno Espacio Deportivo por tu turno del ${turno}.`
+  );
+
+  return `
+  <div style="background:#f5f7fb;padding:24px 12px;font-family:Arial,Helvetica,sans-serif">
+    <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb">
+      <div style="background:#023e8a;background:linear-gradient(135deg,#023e8a,#0077b6);padding:24px;color:#ffffff">
+        <div style="font-size:13px;opacity:0.85">Oxígeno Espacio Deportivo · Panel de administración</div>
+        <div style="font-size:24px;font-weight:bold;margin-top:4px">🎾 Nuevo turno reservado</div>
+      </div>
+
+      <div style="padding:24px">
+        <div style="padding:16px;border-radius:12px;background:#f0f7ff;border:1px solid #cfe3fb;margin-bottom:20px">
+          <div style="font-size:13px;color:#4b5563">Turno</div>
+          <div style="font-size:20px;font-weight:bold;color:#023e8a;margin-top:2px">${escapeHtml(data.startTime)} a ${escapeHtml(data.endTime)} hs</div>
+          <div style="font-size:15px;color:#111827;margin-top:2px">${escapeHtml(formattedDate)} · ${escapeHtml(data.courtName)}</div>
+          <div style="font-size:15px;color:#0077b6;font-weight:bold;margin-top:6px">Monto a abonar: ${formatMoney(data.paidAmount)}</div>
+        </div>
+
+        <div style="font-size:16px;font-weight:bold;color:#111827;margin-bottom:6px">👤 Datos del cliente</div>
+        <table role="presentation" style="width:100%;border-collapse:collapse">
+          ${row("Nombre", escapeHtml(name))}
+          ${data.dni ? row("DNI", escapeHtml(data.dni)) : ""}
+          ${row("Email", `<a href="mailto:${escapeHtml(data.email)}" style="color:#0077b6">${escapeHtml(data.email)}</a>`)}
+          ${row("WhatsApp", escapeHtml(formatWhatsapp(clientPhone)))}
+          ${row("Reservó el", escapeHtml(formatBookingMoment(data.bookingDate)))}
+        </table>
+
+        <div style="margin-top:20px;text-align:center">
+          <a href="${chatLink}" style="display:inline-block;background:#25D366;color:#ffffff;text-decoration:none;font-weight:bold;font-size:15px;padding:13px 24px;border-radius:8px">Escribirle por WhatsApp</a>
+        </div>
+
+        <p style="margin:20px 0 0;font-size:13px;color:#6b7280;text-align:center">
+          Podés ver y gestionar esta reserva en el panel, en Padel → Reservas.
+        </p>
+      </div>
+    </div>
   </div>`;
+};
 
 // Envía la confirmación al cliente y el aviso al admin. Los errores se registran pero no
 // interrumpen la reserva: el turno ya quedó guardado en la base aunque el mail falle.
