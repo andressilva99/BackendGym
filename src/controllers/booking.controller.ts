@@ -27,7 +27,7 @@ const isBookingClosed = (date: Date, startTime: string) => {
 
 /* ===== GET /bookings ===== */
 export const getBookings = async (req: Request, res: Response) => {
-  const { date, dni } = req.query;
+  const { date, dni, from, to } = req.query;
 
   const filter: any = {};
   if (dni) filter.dni = Number(dni);
@@ -36,6 +36,15 @@ export const getBookings = async (req: Request, res: Response) => {
     const nextDay = new Date(day);
     nextDay.setDate(nextDay.getDate() + 1);
     filter.date = { $gte: day, $lt: nextDay };
+  } else if (from || to) {
+    // Rango de fechas del turno (YYYY-MM-DD), ambos extremos incluidos
+    filter.date = {};
+    if (from) filter.date.$gte = new Date(String(from));
+    if (to) {
+      const end = new Date(String(to));
+      end.setDate(end.getDate() + 1);
+      filter.date.$lt = end;
+    }
   }
 
   const bookings = await BookingModel.find(filter).sort({ date: -1, startTime: 1 });
