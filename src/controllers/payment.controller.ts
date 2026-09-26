@@ -3,13 +3,35 @@ import { PaymentModel } from "../models/payment.model";
 import { SocioModel } from "../models/socio.model";
 import { ShareModel } from "../models/share.model";
 
+// "2026-09" → { year: 2026, month: 9 } (null si el formato no es válido)
+const parsePeriod = (value: unknown) => {
+  const match = /^(\d{4})-(\d{1,2})$/.exec(String(value ?? ""));
+  if (!match) return null;
+  const month = Number(match[2]);
+  return month >= 1 && month <= 12 ? { year: Number(match[1]), month } : null;
+};
+
 // GET /payments
+// Filtros opcionales: year, month, isPaid (true|false) y/o un rango de meses
+// from=YYYY-MM & to=YYYY-MM (ambos incluidos)
 export const getPayments = async (req: Request, res: Response) => {
-  const { year, month } = req.query;
+  const { year, month, from, to, isPaid } = req.query;
 
   const filter: any = {};
   if (year) filter.year = Number(year);
   if (month) filter.month = Number(month);
+  if (isPaid === "true" || isPaid === "false") filter.isPaid = isPaid === "true";
+
+  const range: any[] = [];
+  const fromPeriod = parsePeriod(from);
+  const toPeriod = parsePeriod(to);
+  if (fromPeriod) {
+    range.push({ $or: [{ year: { $gt: fromPeriod.year } }, { year: fromPeriod.year, month: { $gte: fromPeriod.month } }] });
+  }
+  if (toPeriod) {
+    range.push({ $or: [{ year: { $lt: toPeriod.year } }, { year: toPeriod.year, month: { $lte: toPeriod.month } }] });
+  }
+  if (range.length) filter.$and = range;
 
   const payments = await PaymentModel.find(filter)
     .populate({

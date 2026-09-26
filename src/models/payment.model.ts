@@ -46,4 +46,10 @@ const paymentSchema = new Schema<Payment>(
 // Evita duplicados: 1 pago por socio + año + mes
 paymentSchema.index({ socioId: 1, year: 1, month: 1 }, { unique: true });
 
+// Búsquedas por período (rango de meses en la pantalla de pagos)
+paymentSchema.index({ year: 1, month: 1 });
+
+// Búsqueda de pendientes de cualquier mes (pestaña "Pendientes")
+paymentSchema.index({ isPaid: 1 });
+
 export const PaymentModel = model<Payment>("Pago", paymentSchema, "pagos");
