@@ -149,7 +149,7 @@ const customerHtml = (data: BookingEmailData, formattedDate: string) => {
           Hola <strong>${escapeHtml(name)}</strong>, tu turno quedó reservado con estos datos:
         </p>
         <table role="presentation" style="width:100%;border-collapse:collapse">
-          ${row("Cancha", escapeHtml(data.courtName))}
+          ${row("Lugar", escapeHtml(data.courtName))}
           ${row("Fecha", escapeHtml(formattedDate))}
           ${row("Horario", `${escapeHtml(data.startTime)} a ${escapeHtml(data.endTime)}`)}
           ${row("Monto a abonar", `<span style="color:#0077b6;font-size:16px">${formatMoney(data.paidAmount)}</span>`)}
