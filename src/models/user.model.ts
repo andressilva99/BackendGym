@@ -4,6 +4,7 @@ import bcrypt from "bcrypt";
 export enum Role {
   ADMIN = "ADMINISTRATIVO",
   TRAINER = "ENTRENADOR",
+  SHIFTS = "TURNERO",
 } 
 export interface User extends Document {
   username: string;
