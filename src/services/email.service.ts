@@ -89,6 +89,110 @@ const sendMail = async (options: MailOptions) => {
   console.log(`📧 Email enviado a ${options.to}: ${options.subject}`);
 };
 
+/* ===== Datos de pago y contacto =====
+ * Se pueden cambiar desde las variables de entorno de Render sin tocar el código.
+ * Si una variable no está cargada, se usa el valor por defecto.
+ */
+const paymentInfo = () => ({
+  alias: process.env.PAYMENT_ALIAS || "vero.oxigeno",
+  holder: process.env.PAYMENT_HOLDER || "Veronica Del Valle Alvarez Rojas",
+  cuit: process.env.PAYMENT_CUIT || "27-24656493-6",
+  bank: process.env.PAYMENT_BANK || "Mercado Pago",
+  // Solo números, con código de país (549 + característica + número)
+  whatsapp: (process.env.CONTACT_WHATSAPP || "5493564619223").replace(/\D/g, ""),
+  cancelNoticeHours: Number(process.env.CANCEL_NOTICE_HOURS) || 24
+});
+
+// Todo dato que viene del formulario se escapa antes de ir al HTML del email
+const escapeHtml = (value: unknown) =>
+  String(value ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string
+  );
+
+const formatMoney = (amount: number) => `$${Number(amount || 0).toLocaleString("es-AR")}`;
+
+// "5493564619223" → "+54 9 3564 61-9223"
+const formatWhatsapp = (digits: string) =>
+  digits.length === 13
+    ? `+${digits.slice(0, 2)} ${digits.slice(2, 3)} ${digits.slice(3, 7)} ${digits.slice(7, 9)}-${digits.slice(9)}`
+    : `+${digits}`;
+
+const whatsappLink = (phone: string, message: string) =>
+  `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+
+const row = (label: string, value: string) => `
+  <tr>
+    <td style="padding:6px 0;color:#6b7280;font-size:14px;width:130px;vertical-align:top">${label}</td>
+    <td style="padding:6px 0;color:#111827;font-size:14px;font-weight:600">${value}</td>
+  </tr>`;
+
+const customerHtml = (data: BookingEmailData, formattedDate: string) => {
+  const pay = paymentInfo();
+  const name = `${data.firstName} ${data.lastName}`;
+  const turno = `${formattedDate} de ${data.startTime} a ${data.endTime} en ${data.courtName}`;
+
+  const receiptLink = whatsappLink(pay.whatsapp, `Hola! Te envío el comprobante de mi turno del ${turno}, a nombre de ${name}.`);
+  const cancelLink = whatsappLink(pay.whatsapp, `Hola! Quiero cancelar mi turno del ${turno}, a nombre de ${name}.`);
+
+  return `
+  <div style="background:#f5f7fb;padding:24px 12px;font-family:Arial,Helvetica,sans-serif">
+    <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb">
+      <div style="background:#023e8a;background:linear-gradient(135deg,#023e8a,#0077b6);padding:24px;color:#ffffff">
+        <div style="font-size:13px;opacity:0.85">Oxígeno Espacio Deportivo</div>
+        <div style="font-size:24px;font-weight:bold;margin-top:4px">¡Turno reservado!</div>
+      </div>
+
+      <div style="padding:24px">
+        <p style="margin:0 0 16px;font-size:15px;color:#111827">
+          Hola <strong>${escapeHtml(name)}</strong>, tu turno quedó reservado con estos datos:
+        </p>
+        <table role="presentation" style="width:100%;border-collapse:collapse">
+          ${row("Cancha", escapeHtml(data.courtName))}
+          ${row("Fecha", escapeHtml(formattedDate))}
+          ${row("Horario", `${escapeHtml(data.startTime)} a ${escapeHtml(data.endTime)}`)}
+          ${row("Monto a transferir", `<span style="color:#0077b6;font-size:16px">${formatMoney(data.paidAmount)}</span>`)}
+        </table>
+
+        <div style="margin-top:20px;padding:16px;border-radius:12px;background:#f0f7ff;border:1px solid #cfe3fb">
+          <div style="font-size:16px;font-weight:bold;color:#023e8a;margin-bottom:8px">💳 Datos para transferir</div>
+          <table role="presentation" style="width:100%;border-collapse:collapse">
+            ${row("Alias", `<span style="font-size:16px">${escapeHtml(pay.alias)}</span>`)}
+            ${row("Titular", escapeHtml(pay.holder))}
+            ${row("CUIT", escapeHtml(pay.cuit))}
+            ${row("Banco / billetera", escapeHtml(pay.bank))}
+          </table>
+        </div>
+
+        <div style="margin-top:20px;padding:16px;border-radius:12px;background:#f9fafb;border:1px solid #e5e7eb">
+          <div style="font-size:16px;font-weight:bold;color:#111827">📲 ¿Necesitás comunicarte con nosotros?</div>
+          <div style="font-size:14px;color:#4b5563;margin:6px 0 14px">WhatsApp: <strong>${formatWhatsapp(pay.whatsapp)}</strong></div>
+          <a href="${receiptLink}" style="display:inline-block;background:#25D366;color:#ffffff;text-decoration:none;font-weight:bold;font-size:14px;padding:12px 20px;border-radius:8px;margin:0 8px 8px 0">Enviar comprobante</a>
+          <a href="${cancelLink}" style="display:inline-block;background:#ffffff;color:#374151;text-decoration:none;font-weight:bold;font-size:14px;padding:11px 19px;border-radius:8px;border:1px solid #d1d5db;margin:0 0 8px 0">Cancelar turno</a>
+          <div style="font-size:13px;color:#6b7280;margin-top:8px">
+            Si no podés venir, avisanos con al menos <strong>${pay.cancelNoticeHours} horas</strong> de anticipación.
+          </div>
+        </div>
+
+        <p style="margin:24px 0 0;font-size:15px;color:#111827">¡Te esperamos!</p>
+      </div>
+    </div>
+  </div>`;
+};
+
+const adminHtml = (data: BookingEmailData, formattedDate: string) => `
+  <div style="font-family:Arial,Helvetica,sans-serif">
+    <h2 style="color:#023e8a">Nuevo turno reservado</h2>
+    <table role="presentation" style="border-collapse:collapse">
+      ${row("Cliente", escapeHtml(`${data.firstName} ${data.lastName}`))}
+      ${row("Email", escapeHtml(data.email))}
+      ${row("WhatsApp", escapeHtml(data.whatsapp))}
+      ${row("Cancha", escapeHtml(data.courtName))}
+      ${row("Fecha", escapeHtml(formattedDate))}
+      ${row("Horario", `${escapeHtml(data.startTime)} a ${escapeHtml(data.endTime)}`)}
+      ${row("Monto a transferir", formatMoney(data.paidAmount))}
+    </table>
+  </div>`;
+
 // Envía la confirmación al cliente y el aviso al admin. Los errores se registran pero no
 // interrumpen la reserva: el turno ya quedó guardado en la base aunque el mail falle.
 export const sendBookingEmails = async (data: BookingEmailData) => {
@@ -99,18 +203,8 @@ export const sendBookingEmails = async (data: BookingEmailData) => {
   const customerMail = sendMail({
     from,
     to: data.email,
-    subject: `Turno confirmado - ${data.courtName}`,
-    html: `
-      <h2>¡Turno confirmado!</h2>
-      <p>Hola ${data.firstName} ${data.lastName}, tu turno quedó reservado con los siguientes datos:</p>
-      <ul>
-        <li><strong>Cancha:</strong> ${data.courtName}</li>
-        <li><strong>Fecha:</strong> ${formattedDate}</li>
-        <li><strong>Horario:</strong> ${data.startTime} a ${data.endTime}</li>
-        <li><strong>Monto abonado:</strong> $${data.paidAmount}</li>
-      </ul>
-      <p>¡Te esperamos!</p>
-    `
+    subject: `Turno reservado - ${data.courtName} - ${formattedDate} ${data.startTime} hs`,
+    html: customerHtml(data, formattedDate)
   }).catch((error) => {
     console.error("❌ Error enviando email al cliente:", error);
   });
@@ -119,19 +213,8 @@ export const sendBookingEmails = async (data: BookingEmailData) => {
     ? sendMail({
         from,
         to: adminEmail,
-        subject: `Nuevo turno reservado - ${data.courtName}`,
-        html: `
-          <h2>Nuevo turno reservado</h2>
-          <ul>
-            <li><strong>Cliente:</strong> ${data.firstName} ${data.lastName}</li>
-            <li><strong>Email:</strong> ${data.email}</li>
-            <li><strong>WhatsApp:</strong> ${data.whatsapp}</li>
-            <li><strong>Cancha:</strong> ${data.courtName}</li>
-            <li><strong>Fecha:</strong> ${formattedDate}</li>
-            <li><strong>Horario:</strong> ${data.startTime} a ${data.endTime}</li>
-            <li><strong>Monto abonado:</strong> $${data.paidAmount}</li>
-          </ul>
-        `
+        subject: `Nuevo turno reservado - ${data.courtName} - ${formattedDate} ${data.startTime} hs`,
+        html: adminHtml(data, formattedDate)
       }).catch((error) => {
         console.error("❌ Error enviando email al admin:", error);
       })
