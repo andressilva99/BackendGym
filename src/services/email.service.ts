@@ -100,7 +100,7 @@ const paymentInfo = () => ({
   bank: process.env.PAYMENT_BANK || "Mercado Pago",
   // Solo números, con código de país (549 + característica + número)
   whatsapp: (process.env.CONTACT_WHATSAPP || "5493564619223").replace(/\D/g, ""),
-  cancelNoticeHours: Number(process.env.CANCEL_NOTICE_HOURS) || 24
+  cancelNoticeHours: Number(process.env.CANCEL_NOTICE_HOURS) || 2
 });
 
 // Todo dato que viene del formulario se escapa antes de ir al HTML del email
@@ -150,17 +150,26 @@ const customerHtml = (data: BookingEmailData, formattedDate: string) => {
           ${row("Cancha", escapeHtml(data.courtName))}
           ${row("Fecha", escapeHtml(formattedDate))}
           ${row("Horario", `${escapeHtml(data.startTime)} a ${escapeHtml(data.endTime)}`)}
-          ${row("Monto a transferir", `<span style="color:#0077b6;font-size:16px">${formatMoney(data.paidAmount)}</span>`)}
+          ${row("Monto a abonar", `<span style="color:#0077b6;font-size:16px">${formatMoney(data.paidAmount)}</span>`)}
         </table>
 
         <div style="margin-top:20px;padding:16px;border-radius:12px;background:#f0f7ff;border:1px solid #cfe3fb">
-          <div style="font-size:16px;font-weight:bold;color:#023e8a;margin-bottom:8px">💳 Datos para transferir</div>
+          <div style="font-size:16px;font-weight:bold;color:#023e8a;margin-bottom:4px">💳 Formas de pago</div>
+          <div style="font-size:14px;color:#4b5563;margin-bottom:12px">Podés abonar tu turno de cualquiera de estas dos formas:</div>
+
+          <div style="font-size:15px;font-weight:bold;color:#111827">1. Transferencia</div>
           <table role="presentation" style="width:100%;border-collapse:collapse">
             ${row("Alias", `<span style="font-size:16px">${escapeHtml(pay.alias)}</span>`)}
             ${row("Titular", escapeHtml(pay.holder))}
             ${row("CUIT", escapeHtml(pay.cuit))}
             ${row("Banco / billetera", escapeHtml(pay.bank))}
           </table>
+          <div style="font-size:13px;color:#6b7280;margin-top:4px">Si transferís, envianos el comprobante por WhatsApp con el botón de abajo.</div>
+
+          <div style="border-top:1px solid #cfe3fb;margin:14px 0"></div>
+
+          <div style="font-size:15px;font-weight:bold;color:#111827">2. 💵 Efectivo</div>
+          <div style="font-size:14px;color:#374151;margin-top:4px">Podés abonar en efectivo en el momento de llegar a la cancha.</div>
         </div>
 
         <div style="margin-top:20px;padding:16px;border-radius:12px;background:#f9fafb;border:1px solid #e5e7eb">
@@ -189,7 +198,7 @@ const adminHtml = (data: BookingEmailData, formattedDate: string) => `
       ${row("Cancha", escapeHtml(data.courtName))}
       ${row("Fecha", escapeHtml(formattedDate))}
       ${row("Horario", `${escapeHtml(data.startTime)} a ${escapeHtml(data.endTime)}`)}
-      ${row("Monto a transferir", formatMoney(data.paidAmount))}
+      ${row("Monto a abonar", formatMoney(data.paidAmount))}
     </table>
   </div>`;
 

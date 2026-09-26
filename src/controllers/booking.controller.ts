@@ -3,6 +3,28 @@ import { BookingModel } from "../models/booking.model";
 import { TimesLotModel, State } from "../models/timesLot.model";
 import { sendBookingEmails } from "../services/email.service";
 
+// Minutos antes del inicio en que se cierra la reserva de un turno (configurable en Render)
+const BOOKING_CUTOFF_MINUTES = Number(process.env.BOOKING_CUTOFF_MINUTES) || 5;
+
+// Argentina está en UTC-3 todo el año (sin horario de verano)
+const ARGENTINA_UTC_OFFSET_HOURS = 3;
+
+// El turno guarda la fecha como medianoche UTC del día ("2026-09-26T00:00:00Z") y la hora
+// como texto en hora argentina ("13:00"). Armamos el instante real de inicio para comparar
+// con la hora del servidor, sin depender del reloj del celular del cliente.
+const isBookingClosed = (date: Date, startTime: string) => {
+  const day = new Date(date);
+  const [hours, minutes] = startTime.split(":").map(Number);
+  const startsAt = Date.UTC(
+    day.getUTCFullYear(),
+    day.getUTCMonth(),
+    day.getUTCDate(),
+    hours + ARGENTINA_UTC_OFFSET_HOURS,
+    minutes
+  );
+  return Date.now() >= startsAt - BOOKING_CUTOFF_MINUTES * 60_000;
+};
+
 /* ===== GET /bookings ===== */
 export const getBookings = async (req: Request, res: Response) => {
   const { date, dni } = req.query;
@@ -38,6 +60,13 @@ export const createBooking = async (req: Request, res: Response) => {
 
   if (timeslot.status !== State.AVAILABLE) {
     return res.status(400).json({ message: "El turno ya no está disponible" });
+  }
+
+  if (isBookingClosed(timeslot.date, timeslot.startTime)) {
+    return res.status(400).json({
+      code: "BOOKING_CLOSED",
+      message: `Las reservas de este turno ya cerraron: se puede reservar hasta ${BOOKING_CUTOFF_MINUTES} minutos antes del horario de inicio.`
+    });
   }
 
   const court = timeslot.courtId as unknown as { name: string };
