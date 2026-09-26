@@ -12,18 +12,23 @@ const ARGENTINA_UTC_OFFSET_HOURS = 3;
 // El turno guarda la fecha como medianoche UTC del día ("2026-09-26T00:00:00Z") y la hora
 // como texto en hora argentina ("13:00"). Armamos el instante real de inicio para comparar
 // con la hora del servidor, sin depender del reloj del celular del cliente.
-const isBookingClosed = (date: Date, startTime: string) => {
+const slotStartsAt = (date: Date, startTime: string) => {
   const day = new Date(date);
   const [hours, minutes] = startTime.split(":").map(Number);
-  const startsAt = Date.UTC(
+  return Date.UTC(
     day.getUTCFullYear(),
     day.getUTCMonth(),
     day.getUTCDate(),
     hours + ARGENTINA_UTC_OFFSET_HOURS,
     minutes
   );
-  return Date.now() >= startsAt - BOOKING_CUTOFF_MINUTES * 60_000;
 };
+
+const isBookingClosed = (date: Date, startTime: string) =>
+  Date.now() >= slotStartsAt(date, startTime) - BOOKING_CUTOFF_MINUTES * 60_000;
+
+// Un turno que ya empezó (o pasó) no se puede cancelar: se perdería el historial de quién jugó
+const hasSlotStarted = (date: Date, startTime: string) => Date.now() >= slotStartsAt(date, startTime);
 
 /* ===== GET /bookings ===== */
 export const getBookings = async (req: Request, res: Response) => {
@@ -157,11 +162,20 @@ export const markBookingSeen = async (req: Request, res: Response) => {
 
 /* ===== DELETE /bookings/:id ===== */
 export const deleteBooking = async (req: Request, res: Response) => {
-  const booking = await BookingModel.findByIdAndDelete(req.params.id);
+  const booking = await BookingModel.findById(req.params.id);
 
   if (!booking) {
     return res.status(404).json({ message: "Reserva no encontrada" });
   }
+
+  if (hasSlotStarted(booking.date, booking.startTime)) {
+    return res.status(400).json({
+      code: "BOOKING_ALREADY_PLAYED",
+      message: "No se puede cancelar la reserva de un turno que ya empezó o ya pasó."
+    });
+  }
+
+  await booking.deleteOne();
 
   await TimesLotModel.findByIdAndUpdate(booking.timeslotId, {
     status: State.AVAILABLE
