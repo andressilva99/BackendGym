@@ -171,7 +171,7 @@ const customerHtml = (data: BookingEmailData, formattedDate: string) => {
           <div style="border-top:1px solid #cfe3fb;margin:14px 0"></div>
 
           <div style="font-size:15px;font-weight:bold;color:#111827">2. 💵 Efectivo</div>
-          <div style="font-size:14px;color:#374151;margin-top:4px">Podés abonar en efectivo en el momento de llegar a la cancha.</div>
+          <div style="font-size:14px;color:#374151;margin-top:4px">Podés abonar en efectivo al momento de llegar a la cancha.</div>
         </div>
 
         <div style="margin-top:20px;padding:16px;border-radius:12px;background:#f9fafb;border:1px solid #e5e7eb">
