@@ -50,6 +50,13 @@ export const createBooking = async (req: Request, res: Response) => {
     return res.status(400).json({ message: "Faltan datos obligatorios" });
   }
 
+  // WhatsApp de Argentina: característica + número = 10 dígitos, sin el 0 inicial ni el 15
+  if (!/^[1-9]\d{9}$/.test(String(whatsapp))) {
+    return res.status(400).json({
+      message: "El WhatsApp debe tener 10 dígitos: característica + número, sin el 0 y sin el 15 (ej: 3564619223)"
+    });
+  }
+
   const timeslot = await TimesLotModel.findById(timeslotId)
     .populate<{ courtId: { name: string } }>("courtId", "name")
     .populate<{ priceId: { amount: number } }>("priceId", "amount");
