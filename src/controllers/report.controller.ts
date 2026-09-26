@@ -1,6 +1,79 @@
 import { Request, Response } from "express";
 import { PaymentModel } from "../models/payment.model";
 import { UserModel } from "../models/user.model"; // para traer username del trainer
+import { BookingModel } from "../models/booking.model";
+import { TimesLotModel, State } from "../models/timesLot.model";
+
+/**
+ * GET /reports/padel?year=2026&month=9
+ * Reporte mensual de turnos de padel (por fecha del turno, no de la reserva):
+ * - totals: reservas, ingresos, ticket promedio, turnos ofrecidos y % de ocupación
+ * - byCourt: reservas e ingresos por cancha
+ * - byRate: reservas e ingresos por tarifa (monto del turno)
+ * - byDay: reservas e ingresos de cada día del mes (todos los días, aunque tengan 0)
+ */
+export const getPadelReport = async (req: Request, res: Response) => {
+  const year = Number(req.query.year);
+  const month = Number(req.query.month);
+
+  if (!year || !month || month < 1 || month > 12) {
+    return res.status(400).json({ message: "Faltan parámetros year y month válidos" });
+  }
+
+  // Las fechas de turnos se guardan como medianoche UTC del día → rango del mes en UTC
+  const from = new Date(Date.UTC(year, month - 1, 1));
+  const to = new Date(Date.UTC(year, month, 1));
+  const dateFilter = { date: { $gte: from, $lt: to } };
+
+  const [bookings, slotsTotal, slotsBooked] = await Promise.all([
+    BookingModel.find(dateFilter).select("courtName paidAmount date").lean(),
+    TimesLotModel.countDocuments(dateFilter),
+    TimesLotModel.countDocuments({ ...dateFilter, status: State.BOOKED })
+  ]);
+
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const byDay = Array.from({ length: daysInMonth }, (_, i) => ({ day: i + 1, bookings: 0, revenue: 0 }));
+  const byCourtMap = new Map<string, { courtName: string; bookings: number; revenue: number }>();
+  const byRateMap = new Map<number, { amount: number; bookings: number; revenue: number }>();
+
+  let revenue = 0;
+  for (const b of bookings) {
+    const amount = Number(b.paidAmount) || 0;
+    revenue += amount;
+
+    const dayRow = byDay[new Date(b.date).getUTCDate() - 1];
+    if (dayRow) {
+      dayRow.bookings += 1;
+      dayRow.revenue += amount;
+    }
+
+    const court = byCourtMap.get(b.courtName) ?? { courtName: b.courtName, bookings: 0, revenue: 0 };
+    court.bookings += 1;
+    court.revenue += amount;
+    byCourtMap.set(b.courtName, court);
+
+    const rate = byRateMap.get(amount) ?? { amount, bookings: 0, revenue: 0 };
+    rate.bookings += 1;
+    rate.revenue += amount;
+    byRateMap.set(amount, rate);
+  }
+
+  res.json({
+    year,
+    month,
+    totals: {
+      bookings: bookings.length,
+      revenue,
+      averageTicket: bookings.length ? Math.round(revenue / bookings.length) : 0,
+      slotsTotal,
+      slotsBooked,
+      occupancy: slotsTotal ? Math.round((slotsBooked / slotsTotal) * 100) : 0
+    },
+    byCourt: Array.from(byCourtMap.values()).sort((a, b) => b.revenue - a.revenue),
+    byRate: Array.from(byRateMap.values()).sort((a, b) => a.amount - b.amount),
+    byDay
+  });
+};
 
 /**
  * GET /reports/summary?year=2026&month=2
