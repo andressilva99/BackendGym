@@ -2,14 +2,17 @@ import { Request, Response } from "express";
 import { ShareModel } from "../models/share.model";
 
 /* ===== GET /shares ===== */
-export const getShares = async (_req: Request, res: Response) => {
-  const shares = await ShareModel.find();
+// ?active=true → solo activas. Se filtra por "no desactivada" para incluir las cuotas viejas
+// que no tienen el campo active guardado.
+export const getShares = async (req: Request, res: Response) => {
+  const filter = req.query.active === "true" ? { active: { $ne: false } } : {};
+  const shares = await ShareModel.find(filter);
   res.json(shares);
 };
 
 /* ===== POST /shares ===== */
 export const createShare = async (req: Request, res: Response) => {
-  const { numberDays, amount, quoteDate } = req.body;
+  const { numberDays, amount, quoteDate, active } = req.body;
 
   // 🔹 CORRECCIÓN: Verificamos que no sean undefined o null. 
   // Antes, if(!amount) fallaba si amount era 0.
@@ -20,7 +23,8 @@ export const createShare = async (req: Request, res: Response) => {
   const share = new ShareModel({
     numberDays,
     amount,
-    quoteDate
+    quoteDate,
+    active: active ?? true
   });
 
   await share.save();

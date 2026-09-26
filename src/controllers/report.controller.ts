@@ -25,7 +25,10 @@ export const getSummaryReport = async (req: Request, res: Response) => {
     .lean();
 
   // --- helpers seguros ---
+  // Primero el monto guardado en el pago ("foto" al generarlo); si es un pago viejo sin
+  // foto, el de la cuota como antes
   const getShareAmount = (p: any) => {
+    if (p.amount != null) return Number(p.amount) || 0;
     if (p.shareId && typeof p.shareId === "object" && p.shareId.amount != null) {
       return Number(p.shareId.amount) || 0;
     }

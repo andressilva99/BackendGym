@@ -7,6 +7,10 @@ export interface Payment extends Document {
   month: number; // 1..12
   isPaid: boolean;
   paymentDate?: Date | null;
+  // "Foto" de la cuota al momento de generar el pago: si después se edita o borra la cuota,
+  // el pago conserva su valor. Los pagos viejos no los tienen (se usa el de la cuota).
+  amount?: number;
+  numberDays?: number;
 }
 
 const paymentSchema = new Schema<Payment>(
@@ -38,6 +42,12 @@ const paymentSchema = new Schema<Payment>(
     paymentDate: {
       type: Date,
       default: null
+    },
+    amount: {
+      type: Number
+    },
+    numberDays: {
+      type: Number
     }
   },
   { timestamps: true }

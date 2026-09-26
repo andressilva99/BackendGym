@@ -77,7 +77,9 @@ export const createPayment = async (req: Request, res: Response) => {
     year,
     month,
     isPaid: false,
-    paymentDate: null
+    paymentDate: null,
+    amount: share.amount,
+    numberDays: share.numberDays
   });
 
   res.status(201).json(payment);
@@ -89,6 +91,14 @@ export const generatePayments = async (req: Request, res: Response) => {
 
   if (!year || !month || !shareId) {
     return res.status(400).json({ message: "Faltan datos" });
+  }
+
+  const share = await ShareModel.findById(shareId);
+  if (!share) {
+    return res.status(404).json({ message: "Cuota no encontrada" });
+  }
+  if (share.active === false) {
+    return res.status(400).json({ message: "La cuota seleccionada está inactiva" });
   }
 
   const socios = socioIds?.length
@@ -109,7 +119,9 @@ export const generatePayments = async (req: Request, res: Response) => {
         socioId: socio._id,
         shareId,
         year,
-        month
+        month,
+        amount: share.amount,
+        numberDays: share.numberDays
       });
       created++;
     }
@@ -127,6 +139,15 @@ export const togglePayment = async (req: Request, res: Response) => {
 
   payment.isPaid = !payment.isPaid;
   payment.paymentDate = payment.isPaid ? new Date() : null;
+
+  // Pago viejo sin "foto": al cobrarlo congelamos el valor de su cuota en ese momento
+  if (payment.isPaid && payment.amount == null) {
+    const share = await ShareModel.findById(payment.shareId);
+    if (share) {
+      payment.amount = share.amount;
+      payment.numberDays = share.numberDays;
+    }
+  }
 
   await payment.save();
   res.json(payment);
@@ -153,7 +174,12 @@ export const updatePayment = async (req: Request, res: Response) => {
     if (!share) {
       return res.status(404).json({ message: "Cuota no encontrada" });
     }
+    if (share.active === false && String(payment.shareId) !== String(shareId)) {
+      return res.status(400).json({ message: "La cuota seleccionada está inactiva" });
+    }
     payment.shareId = shareId;
+    payment.amount = share.amount;
+    payment.numberDays = share.numberDays;
   }
 
   await payment.save();
